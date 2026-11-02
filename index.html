@@ -144,14 +144,42 @@ canvas { display: block; max-width: 100%; height: auto; }
 }
 .control-button:active { background: #075985; transform: scale(.96); }
 .fire-button { width: 88px; height: 88px; border-radius: 50%; background: rgba(127,29,29,.95); border-color: #f87171; font-size: 14px; }
-.movement-pad { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.movement-middle { display: flex; align-items: center; gap: 5px; }
+.joystick {
+  position: relative;
+  width: 142px;
+  height: 142px;
+  flex: 0 0 142px;
+  border-radius: 50%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.joystick-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(125, 211, 252, .75);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(30, 64, 95, .55), rgba(15, 23, 42, .88));
+  box-shadow: inset 0 0 18px rgba(56, 189, 248, .18), 0 0 16px rgba(56, 189, 248, .15);
+}
+.joystick-knob {
+  position: absolute;
+  width: 62px;
+  height: 62px;
+  left: 40px;
+  top: 40px;
+  border: 2px solid #bae6fd;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #38bdf8, #075985);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .5), 0 0 15px rgba(56, 189, 248, .45);
+  pointer-events: none;
+}
 @media (pointer: coarse) {
   body { min-height: 100dvh; align-items: flex-start; }
   .container { flex-direction: column; align-items: center; width: 100%; gap: 12px; padding: 10px; }
   .arena { width: min(600px, calc(100vw - 20px)); }
   canvas { width: 100%; height: auto; }
-  .mobile-controls { width: min(600px, calc(100vw - 20px)); display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; }
+  .mobile-controls { width: min(600px, calc(100vw - 20px)); display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; gap: 20px; }
   .panel { width: min(600px, calc(100vw - 20px)); }
   .legend { font-size: 13px; }
 }
@@ -171,20 +199,16 @@ canvas { display: block; max-width: 100%; height: auto; }
     <h1>TANK <span>BATTLE</span></h1>
     <p>Prepare seu tanque. A batalha pela galáxia começa agora.</p>
     <button id="startButton" onclick="iniciarJogo()">INICIAR JOGO</button>
-    <div class="menu-hint">PC: SETAS + ESPAÇO &nbsp; | &nbsp; CELULAR: CONTROLES NA TELA</div>
+    <div class="menu-hint">PC: SETAS + ESPAÇO &nbsp; | &nbsp; CELULAR: ANALÓGICO + ATIRAR</div>
   </div>
 </div>
 
 <div id="endScreen" hidden><h1 id="endTitle"></h1><p id="endScore"></p><button onclick="reiniciar()">JOGAR NOVAMENTE</button></div></div>
 
   <div class="mobile-controls" id="mobileControls" aria-label="Controles do jogo">
-    <div class="movement-pad">
-      <button class="control-button up" data-key="ArrowUp" aria-label="Mover para cima">▲</button>
-      <div class="movement-middle">
-        <button class="control-button" data-key="ArrowLeft" aria-label="Mover para esquerda">◀</button>
-        <button class="control-button" data-key="ArrowDown" aria-label="Mover para baixo">▼</button>
-        <button class="control-button" data-key="ArrowRight" aria-label="Mover para direita">▶</button>
-      </div>
+    <div class="joystick" id="joystick" role="application" aria-label="Analógico para movimentar o tanque">
+      <div class="joystick-ring"></div>
+      <div class="joystick-knob" id="joystickKnob"></div>
     </div>
     <button class="control-button fire-button" id="fireButton">ATIRAR</button>
   </div>
@@ -204,7 +228,7 @@ canvas { display: block; max-width: 100%; height: auto; }
 
     <p id="especial">Poderes permanentes: 🔸 Tiro Simples</p>
 
-    <p id="bossStatus"></p><p id="notice"></p><div class="legend">Setas: mover · Espaço: atirar · P: pausar<br>🔴 Normal · 🟡 Rápido · 🔵 Resistente · 🟣 Atirador<br>Na fase 3, segure Espaço para rajadas.<br>Fase final: alcance 500 pontos e derrote o chefe.</div><button id="pauseButton" onclick="togglePause()">Pausar</button>
+    <p id="bossStatus"></p><p id="notice"></p><div class="legend">PC: Setas: mover · Espaço: atirar · P: pausar<br>🔴 Normal · 🟡 Rápido · 🔵 Resistente · 🟣 Atirador<br>Celular: use o analógico e segure ATIRAR.<br>Na fase 3, segure Espaço/ATIRAR para rajadas.<br>Fase final: alcance 500 pontos e derrote o chefe.</div><button id="pauseButton" onclick="togglePause()">Pausar</button>
 
   </div>
 
@@ -232,6 +256,9 @@ let keys = {};
 
 let paused = false;
 let jogoIniciado = false;
+let joystickX = 0;
+let joystickY = 0;
+let joystickAtivo = false;
 
 let player = {
 
@@ -376,6 +403,8 @@ function togglePause() {
   // evita bug de teclas presas
 
   keys = {};
+  joystickX = 0; joystickY = 0; joystickAtivo = false;
+  atualizarVisualAnalógico();
 
   // evita direção travada
 
@@ -793,21 +822,26 @@ function movePlayer() {
 
   let dy = 0;
 
-  if (keys["ArrowUp"]) dy -= 1;
-
-  if (keys["ArrowDown"]) dy += 1;
-
-  if (keys["ArrowLeft"]) dx -= 1;
-
-  if (keys["ArrowRight"]) dx += 1;
+  if (joystickAtivo) {
+    // O analógico fornece movimento contínuo em qualquer direção, inclusive diagonais.
+    dx = joystickX;
+    dy = joystickY;
+  } else {
+    if (keys["ArrowUp"]) dy -= 1;
+    if (keys["ArrowDown"]) dy += 1;
+    if (keys["ArrowLeft"]) dx -= 1;
+    if (keys["ArrowRight"]) dx += 1;
+  }
 
   if (dx !== 0 || dy !== 0) {
 
     let length = Math.sqrt(dx * dx + dy * dy);
 
-    dx /= length;
-
-    dy /= length;
+    // Mantém a velocidade diagonal do teclado e respeita a inclinação do analógico.
+    if (!joystickAtivo) {
+      dx /= length;
+      dy /= length;
+    }
 
     player.x += dx * player.speed;
 
@@ -1297,7 +1331,7 @@ function atingir(e,dano) {
 
 function finalizar(vitoria) {
 
- terminou=true; jogoZerado=vitoria; keys={}; espacoPressionado=false;
+ terminou=true; jogoZerado=vitoria; keys={}; espacoPressionado=false; joystickX=0; joystickY=0; joystickAtivo=false; atualizarVisualAnalógico();
 
  atualizarChefe();
 
@@ -1317,7 +1351,7 @@ function reiniciar() {
 
  player={x:50,y:50,size:30,speed:2,dirX:1,dirY:0,life:100};
 
- bullets=[]; enemyBullets=[]; enemies=[]; efeitos=[]; keys={};
+ bullets=[]; enemyBullets=[]; enemies=[]; efeitos=[]; keys={}; joystickX=0; joystickY=0; joystickAtivo=false; atualizarVisualAnalógico();
 
  score=0; fase=1; maxEnemies=2; paused=false; terminou=false; jogoZerado=false;
 
@@ -1350,36 +1384,81 @@ function iniciarJogo() {
   requestAnimationFrame(gameLoop);
 }
 
-// Controles por toque: só aparecem em dispositivos com tela sensível ao toque.
+// Analógico virtual para celular: movimento em 360 graus, incluindo diagonais.
+function atualizarVisualAnalógico() {
+  const knob = document.getElementById("joystickKnob");
+  if (!knob) return;
+  const deslocamentoMaximo = 40;
+  knob.style.transform = `translate(${joystickX * deslocamentoMaximo}px, ${joystickY * deslocamentoMaximo}px)`;
+}
+
 function configurarControleMovel() {
-  const botoes = document.querySelectorAll("[data-key]");
-  botoes.forEach(botao => {
-    const tecla = botao.dataset.key;
-    const pressionar = (evento) => {
-      evento.preventDefault();
-      if (!jogoIniciado || terminou || paused) return;
-      keys[tecla] = true;
-      try { botao.setPointerCapture(evento.pointerId); } catch {}
-    };
-    const soltar = (evento) => {
-      evento.preventDefault();
-      keys[tecla] = false;
-    };
-    botao.addEventListener("pointerdown", pressionar);
-    botao.addEventListener("pointerup", soltar);
-    botao.addEventListener("pointercancel", soltar);
-    botao.addEventListener("lostpointercapture", soltar);
+  const joystick = document.getElementById("joystick");
+  const knob = document.getElementById("joystickKnob");
+  let ponteiroAnalógico = null;
+
+  function moverAnalogico(evento) {
+    const rect = joystick.getBoundingClientRect();
+    const centroX = rect.left + rect.width / 2;
+    const centroY = rect.top + rect.height / 2;
+    let dx = evento.clientX - centroX;
+    let dy = evento.clientY - centroY;
+    const limite = rect.width * 0.28;
+    const distancia = Math.hypot(dx, dy);
+
+    if (distancia > limite) {
+      dx = dx / distancia * limite;
+      dy = dy / distancia * limite;
+    }
+
+    joystickX = dx / limite;
+    joystickY = dy / limite;
+    // Pequena zona morta evita movimento involuntário quando o dedo está no centro.
+    if (Math.hypot(joystickX, joystickY) < 0.12) {
+      joystickX = 0;
+      joystickY = 0;
+    }
+    joystickAtivo = Math.hypot(joystickX, joystickY) > 0;
+    atualizarVisualAnalógico();
+  }
+
+  joystick.addEventListener("pointerdown", evento => {
+    evento.preventDefault();
+    if (!jogoIniciado || terminou || paused) return;
+    ponteiroAnalógico = evento.pointerId;
+    try { joystick.setPointerCapture(evento.pointerId); } catch {}
+    moverAnalogico(evento);
   });
 
+  joystick.addEventListener("pointermove", evento => {
+    if (evento.pointerId !== ponteiroAnalógico) return;
+    evento.preventDefault();
+    if (!jogoIniciado || terminou || paused) return;
+    moverAnalogico(evento);
+  });
+
+  function soltarAnalogico(evento) {
+    if (evento.pointerId !== ponteiroAnalógico) return;
+    ponteiroAnalógico = null;
+    joystickX = 0;
+    joystickY = 0;
+    joystickAtivo = false;
+    atualizarVisualAnalógico();
+  }
+  joystick.addEventListener("pointerup", soltarAnalogico);
+  joystick.addEventListener("pointercancel", soltarAnalogico);
+  joystick.addEventListener("lostpointercapture", soltarAnalogico);
+
+  // Botão de tiro permanece separado do analógico.
   const fogo = document.getElementById("fireButton");
-  const pressionarTiro = (evento) => {
+  const pressionarTiro = evento => {
     evento.preventDefault();
     if (!jogoIniciado || terminou || paused) return;
     espacoPressionado = true;
     shoot();
     try { fogo.setPointerCapture(evento.pointerId); } catch {}
   };
-  const soltarTiro = (evento) => {
+  const soltarTiro = evento => {
     evento.preventDefault();
     espacoPressionado = false;
   };
