@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+
+<html lang="pt-br">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Tank Battle Completo</title>
+
+<style>
+
+body {
+
+  margin: 0;
+
+  background: #0f172a;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  min-height: 100vh;
+
+  color: white;
+
+  font-family: Arial;
+
+}
+
+.container {
+
+  display: flex;
+
+  gap: 20px;
+
+  align-items: flex-start;
+
+}
+
+canvas {
+
+  background: #111827;
+
+  border: 3px solid #fff;
+
+}
+
+.panel {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 10px;
+
+}
+
+button {
+
+  padding: 10px;
+
+  font-size: 16px;
+
+  cursor: pointer;
+
+}
+
+
+
+* { box-sizing: border-box; }
+
+.container { padding: 20px; }
+
+.panel { width: 270px; }
+
+.panel p { margin: 5px 0; }
+
+.arena { position: relative; }
+
+canvas { display: block; max-width: 100%; height: auto; }
+
+#endScreen { position: absolute; inset: 0; background: #0f172ae8; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+
+#endScreen[hidden] { display: none; }
+
+#notice { color: #67e8f9; min-height: 60px; }
+
+.legend { font-size: 14px; line-height: 1.7; color: #cbd5e1; }
+
+@media(max-width: 950px) { body { align-items: flex-start; } .container { flex-direction: column; width: 100%; align-items: center; } .panel { width: min(600px,100%); } }
+
+
+/* Tela inicial temática de batalha estelar */
+.arena { position: relative; width: 600px; max-width: 100%; }
+.overlay-start {
+  position: absolute;
+  inset: 3px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+  padding: 22px;
+  background:
+    radial-gradient(ellipse at 50% 72%, rgba(14,116,144,.30), transparent 55%),
+    radial-gradient(circle at 18% 20%, rgba(255,255,255,.9) 1px, transparent 2px),
+    radial-gradient(circle at 78% 30%, rgba(125,211,252,.9) 1px, transparent 2px),
+    radial-gradient(circle at 35% 80%, rgba(255,255,255,.8) 1px, transparent 2px),
+    linear-gradient(145deg, #020617, #101b3b 55%, #071326);
+  background-size: auto, 110px 100px, 150px 130px, 180px 150px, auto;
+}
+.overlay-start[hidden] { display: none; }
+.start-content { max-width: 480px; }
+.menu-kicker { color: #67e8f9; letter-spacing: 5px; font-size: 12px; font-weight: bold; }
+.start-content h1 { margin: 14px 0; font-size: clamp(36px, 8vw, 62px); line-height: 1; color: #f8fafc; text-shadow: 0 0 18px #38bdf8; }
+.start-content h1 span { color: #38bdf8; }
+.start-content p { color: #cbd5e1; line-height: 1.5; }
+#startButton {
+  margin-top: 18px;
+  padding: 15px 34px;
+  border: 2px solid #7dd3fc;
+  border-radius: 5px;
+  color: #04111f;
+  background: linear-gradient(135deg, #67e8f9, #38bdf8);
+  font-weight: 900;
+  letter-spacing: 1px;
+  box-shadow: 0 0 22px rgba(56,189,248,.45);
+}
+#startButton:hover { filter: brightness(1.12); }
+.menu-hint { margin-top: 24px; color: #94a3b8; font-size: 10px; line-height: 1.6; }
+.mobile-controls { display: none; }
+.control-button {
+  width: 54px; height: 54px; padding: 0;
+  border: 1px solid #67e8f9; border-radius: 12px;
+  color: #e0f2fe; background: rgba(15, 23, 42, .92);
+  font-size: 21px; font-weight: bold;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.control-button:active { background: #075985; transform: scale(.96); }
+.fire-button { width: 88px; height: 88px; border-radius: 50%; background: rgba(127,29,29,.95); border-color: #f87171; font-size: 14px; }
+.movement-pad { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.movement-middle { display: flex; align-items: center; gap: 5px; }
+@media (pointer: coarse) {
+  body { min-height: 100dvh; align-items: flex-start; }
+  .container { flex-direction: column; align-items: center; width: 100%; gap: 12px; padding: 10px; }
+  .arena { width: min(600px, calc(100vw - 20px)); }
+  canvas { width: 100%; height: auto; }
+  .mobile-controls { width: min(600px, calc(100vw - 20px)); display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; }
+  .panel { width: min(600px, calc(100vw - 20px)); }
+  .legend { font-size: 13px; }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="arena"><canvas id="game" width="600" height="500"></canvas>
+<div id="startScreen" class="overlay-start">
+  <div class="start-content">
+    <div class="menu-kicker">COMANDO ESTELAR</div>
+    <h1>TANK <span>BATTLE</span></h1>
+    <p>Prepare seu tanque. A batalha pela galáxia começa agora.</p>
+    <button id="startButton" onclick="iniciarJogo()">INICIAR JOGO</button>
+    <div class="menu-hint">PC: SETAS + ESPAÇO &nbsp; | &nbsp; CELULAR: CONTROLES NA TELA</div>
+  </div>
+</div>
+
+<div id="endScreen" hidden><h1 id="endTitle"></h1><p id="endScore"></p><button onclick="reiniciar()">JOGAR NOVAMENTE</button></div></div>
+
+  <div class="mobile-controls" id="mobileControls" aria-label="Controles do jogo">
+    <div class="movement-pad">
+      <button class="control-button up" data-key="ArrowUp" aria-label="Mover para cima">▲</button>
+      <div class="movement-middle">
+        <button class="control-button" data-key="ArrowLeft" aria-label="Mover para esquerda">◀</button>
+        <button class="control-button" data-key="ArrowDown" aria-label="Mover para baixo">▼</button>
+        <button class="control-button" data-key="ArrowRight" aria-label="Mover para direita">▶</button>
+      </div>
+    </div>
+    <button class="control-button fire-button" id="fireButton">ATIRAR</button>
+  </div>
+  <div class="panel">
+
+    <h3>📊 Status</h3>
+
+    <p id="life">Vida: 100</p>
+
+    <p id="score">Pontuação: 0</p>
+
+    <p id="record">Recorde: 0</p>
+
+    <p id="fase">Fase: 1</p>
+
+    <p id="habilidade">Poder atual: 🔸 Tiro Simples</p>
+
+    <p id="especial">Poderes permanentes: 🔸 Tiro Simples</p>
+
+    <p id="bossStatus"></p><p id="notice"></p><div class="legend">Setas: mover · Espaço: atirar · P: pausar<br>🔴 Normal · 🟡 Rápido · 🔵 Resistente · 🟣 Atirador<br>Na fase 3, segure Espaço para rajadas.<br>Fase final: alcance 500 pontos e derrote o chefe.</div><button id="pauseButton" onclick="togglePause()">Pausar</button>
+
+  </div>
+
+</div>
+
+<script>
+
+const canvas = document.getElementById("game");
+
+const ctx = canvas.getContext("2d");
+
+let lifeText = document.getElementById("life");
+
+let scoreText = document.getElementById("score");
+
+let recordText = document.getElementById("record");
+
+let faseText = document.getElementById("fase");
+
+let habilidadeText = document.getElementById("habilidade");
+
+let especialText = document.getElementById("especial");
+
+let keys = {};
+
+let paused = false;
+let jogoIniciado = false;
+
+let player = {
+
+  x: 50,
+
+  y: 50,
+
+  size: 30,
+
+  speed: 2,
+
+  dirX: 1,
+
+  dirY: 0,
+
+  life: 100
+
+};
+
+let bullets = [];
+
+let enemyBullets = [];
+
+let score = 0;
+
+let enemies = [];
+
+let fase = 1;
+
+let maxEnemies = 2;
+
+let jogoZerado = false;
+
+let terminou = false;
+
+let chefeCriado = false;
+
+let chefeDerrotado = false;
+
+/* =========================
+
+   SISTEMA DE HABILIDADES CUMULATIVAS
+
+   =========================
+
+   Cada habilidade é ativada automaticamente ao ser desbloqueada.
+
+   Os efeitos são permanentes e funcionam juntos até o fim da partida.
+
+*/
+
+let habilidades = {
+
+  1: { nome: "🔸 Tiro Simples", desbloqueada: true },
+
+  2: { nome: "🚀 Tiro Duplo", desbloqueada: false },
+
+  3: { nome: "⚡ Tiro Rápido", desbloqueada: false },
+
+  4: { nome: "💥 Explosão + 🛡️ Escudo", desbloqueada: false },
+
+  5: { nome: "☢️ Onda Suprema", desbloqueada: false }
+
+};
+
+let habilidadeSelecionada = 1;
+
+let efeitos = [];
+
+let espacoPressionado = false;
+
+let ultimoTiro = 0;
+
+let contadorSupremo = 0;
+
+let pulsoSupremo = 0;
+
+function atualizarHabilidadeTexto() {
+
+  let lista = [];
+
+  for (let i = 1; i <= 5; i++) {
+
+    if (habilidades[i].desbloqueada) {
+
+      lista.push("✅ " + habilidades[i].nome);
+
+    }
+
+  }
+
+  habilidadeText.innerText =
+
+    "Último poder obtido: " +
+
+    habilidades[habilidadeSelecionada].nome;
+
+  especialText.innerText =
+
+    "Poderes permanentes: " + lista.join(" | ");
+
+}
+
+function desbloquearHabilidade(numero) {
+
+ habilidades[numero].desbloqueada = true;
+
+ habilidadeSelecionada = numero;
+
+ document.getElementById('notice').textContent = 'Fase ' + numero + ': ' + habilidades[numero].nome + ' ativado! Os poderes anteriores continuam ativos.';
+
+ atualizarHabilidadeTexto();
+
+}
+
+function criarExplosao(x, y, grande = false) {
+
+  efeitos.push({ x, y, raio: 5, maxRaio: grande ? 130 : 55, vida: 30 });
+
+}
+
+let record = 0;
+
+try { record = Number(localStorage.getItem("record")) || 0; } catch {}
+
+recordText.innerText = "Recorde: " + record;
+
+atualizarHabilidadeTexto();
+
+function togglePause() {
+
+  if (terminou) return;
+
+  espacoPressionado = false;
+
+  paused = !paused;
+
+  const btn = document.getElementById("pauseButton");
+
+  btn.innerText = paused ? "Continuar" : "Pausar";
+
+  // evita bug de teclas presas
+
+  keys = {};
+
+  // evita direção travada
+
+  if (paused) {
+
+    player.dirX = 0;
+
+    player.dirY = 0;
+
+  }
+
+}
+
+function spawnEnemy() {
+
+ if (enemies.length >= maxEnemies || terminou) return;
+
+ const tipos = fase === 1 ? ['normal'] : fase === 2 ? ['normal','rapido'] : fase === 3 ? ['normal','rapido','atirador'] : ['normal','rapido','resistente','atirador'];
+
+ const tipo = tipos[Math.floor(Math.random()*tipos.length)];
+
+ const config = {normal:[1,.4,120,'#dd2222'], rapido:[1,.8,150,'#facc15'], resistente:[3,.25,140,'#38bdf8'], atirador:[1,.3,65,'#c084fc']}[tipo];
+
+ let x,y;
+
+ for (let i=0;i<30;i++) { x=Math.random()*560; y=Math.random()*460; if(Math.hypot(x-player.x,y-player.y)>140) break; }
+
+ enemies.push({x,y,size:30,shootCooldown:0,tipo,life:config[0],maxLife:config[0],speed:config[1],interval:config[2],color:config[3]});
+
+}
+
+function drawPlayer() {
+
+  ctx.save();
+
+  ctx.translate(player.x + player.size/2, player.y + player.size/2);
+
+  const angle=Math.atan2(player.dirY,player.dirX);
+
+  ctx.rotate(angle);
+
+  ctx.fillStyle="#00cc66";
+
+  ctx.beginPath();
+
+  ctx.moveTo(18,0);
+
+  ctx.lineTo(4,-7);
+
+  ctx.lineTo(-12,-4);
+
+  ctx.lineTo(-16,-10);
+
+  ctx.lineTo(-8,0);
+
+  ctx.lineTo(-16,10);
+
+  ctx.lineTo(-12,4);
+
+  ctx.lineTo(4,7);
+
+  ctx.closePath();
+
+  ctx.fill();
+
+  ctx.fillStyle="#8be9fd";
+
+  ctx.beginPath();
+
+  ctx.arc(4,0,4,0,Math.PI*2);
+
+  ctx.fill();
+
+  ctx.fillStyle="orange";
+
+  ctx.beginPath();
+
+  ctx.moveTo(-16,-3);
+
+  ctx.lineTo(-23,0);
+
+  ctx.lineTo(-16,3);
+
+  ctx.closePath();
+
+  ctx.fill();
+
+  if (habilidades[4].desbloqueada) {
+
+    const brilho = 3 + Math.sin(Date.now() / 120) * 2;
+
+    ctx.shadowColor = "#00e5ff";
+
+    ctx.shadowBlur = 18;
+
+    ctx.strokeStyle = "#67e8f9";
+
+    ctx.lineWidth = brilho;
+
+    ctx.beginPath();
+
+    ctx.arc(0, 0, 27 + Math.sin(Date.now() / 180) * 3, 0, Math.PI * 2);
+
+    ctx.stroke();
+
+  }
+
+  ctx.restore();
+
+}
+
+function drawEnemy(e) {
+
+  ctx.save();
+
+  ctx.translate(e.x + e.size/2, e.y + e.size/2);
+
+  const angle=Math.atan2(player.y-e.y,player.x-e.x);
+
+  ctx.rotate(angle);
+
+  ctx.scale(e.size/30,e.size/30);
+
+  ctx.fillStyle=e.color;
+
+  ctx.beginPath();
+
+  ctx.moveTo(18,0);
+
+  ctx.lineTo(4,-7);
+
+  ctx.lineTo(-12,-4);
+
+  ctx.lineTo(-16,-10);
+
+  ctx.lineTo(-8,0);
+
+  ctx.lineTo(-16,10);
+
+  ctx.lineTo(-12,4);
+
+  ctx.lineTo(4,7);
+
+  ctx.closePath();
+
+  ctx.fill();
+
+  ctx.fillStyle="#ffee55";
+
+  ctx.beginPath();
+
+  ctx.arc(4,0,4,0,Math.PI*2);
+
+  ctx.fill();
+
+  ctx.fillStyle="yellow";
+
+  ctx.beginPath();
+
+  ctx.moveTo(-16,-3);
+
+  ctx.lineTo(-23,0);
+
+  ctx.lineTo(-16,3);
+
+  ctx.closePath();
+
+  ctx.fill();
+
+  ctx.restore();
+
+}
+
+function draw() {
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawPlayer();
+
+  // Onda Suprema: círculo verde que atravessa toda a arena.
+
+  if (pulsoSupremo > 0) {
+
+    ctx.save();
+
+    ctx.strokeStyle = `rgba(57, 255, 20, ${pulsoSupremo / 60})`;
+
+    ctx.shadowColor = "#39ff14";
+
+    ctx.shadowBlur = 25;
+
+    ctx.lineWidth = 10;
+
+    ctx.beginPath();
+
+    ctx.arc(player.x + 15, player.y + 15, (60 - pulsoSupremo) * 11, 0, Math.PI * 2);
+
+    ctx.stroke();
+
+    ctx.restore();
+
+  }
+
+  enemies.forEach(e => drawEnemy(e));
+
+  // Foguetes do jogador
+
+bullets.forEach(b => {
+
+    const angulo = Math.atan2(b.dy, b.dx);
+
+    ctx.save();
+
+    ctx.translate(b.x, b.y);
+
+    ctx.rotate(angulo);
+
+    // brilho e rastro tornam os mísseis explosivos bem visíveis
+
+    if (habilidades[4].desbloqueada) {
+
+      ctx.shadowColor = "#ff7b00";
+
+      ctx.shadowBlur = 14;
+
+    }
+
+    ctx.fillStyle = habilidades[4].desbloqueada ? "#ffe600" : "orange";
+
+    ctx.beginPath();
+
+    ctx.moveTo(-10,0);
+
+    ctx.lineTo(-16,-4);
+
+    ctx.lineTo(-16,4);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    // corpo
+
+    ctx.fillStyle = "white";
+
+    ctx.fillRect(-10,-2,12,4);
+
+    // ponta
+
+    ctx.fillStyle = "red";
+
+    ctx.beginPath();
+
+    ctx.moveTo(6,0);
+
+    ctx.lineTo(0,-4);
+
+    ctx.lineTo(0,4);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    // asas
+
+    ctx.fillStyle = "gray";
+
+    ctx.beginPath();
+
+    ctx.moveTo(-4,-2);
+
+    ctx.lineTo(-8,-7);
+
+    ctx.lineTo(-2,-2);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    ctx.beginPath();
+
+    ctx.moveTo(-4,2);
+
+    ctx.lineTo(-8,7);
+
+    ctx.lineTo(-2,2);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    ctx.restore();
+
+});
+
+// Foguetes dos inimigos
+
+enemyBullets.forEach(b => {
+
+    const angulo = Math.atan2(b.dy, b.dx);
+
+    ctx.save();
+
+    ctx.translate(b.x, b.y);
+
+    ctx.rotate(angulo);
+
+    // chama
+
+    ctx.fillStyle = "yellow";
+
+    ctx.beginPath();
+
+    ctx.moveTo(-10,0);
+
+    ctx.lineTo(-16,-4);
+
+    ctx.lineTo(-16,4);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    // corpo
+
+    ctx.fillStyle = "#ff4444";
+
+    ctx.fillRect(-10,-2,12,4);
+
+    // ponta
+
+    ctx.fillStyle = "darkred";
+
+    ctx.beginPath();
+
+    ctx.moveTo(6,0);
+
+    ctx.lineTo(0,-4);
+
+    ctx.lineTo(0,4);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    // asas
+
+    ctx.fillStyle = "#880000";
+
+    ctx.beginPath();
+
+    ctx.moveTo(-4,-2);
+
+    ctx.lineTo(-8,-7);
+
+    ctx.lineTo(-2,-2);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    ctx.beginPath();
+
+    ctx.moveTo(-4,2);
+
+    ctx.lineTo(-8,7);
+
+    ctx.lineTo(-2,2);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    ctx.restore();
+
+});
+
+// Animações das explosões
+
+efeitos.forEach(efeito => {
+
+  const alpha = efeito.vida / 30;
+
+  ctx.save();
+
+  ctx.globalAlpha = alpha;
+
+  ctx.fillStyle = "rgba(255, 80, 0, 0.20)";
+
+  ctx.strokeStyle = efeito.maxRaio > 100 ? "#39ff14" : "#ffcc00";
+
+  ctx.shadowColor = ctx.strokeStyle;
+
+  ctx.shadowBlur = 25;
+
+  ctx.lineWidth = 8;
+
+  ctx.beginPath();
+
+  ctx.arc(efeito.x, efeito.y, efeito.raio, 0, Math.PI * 2);
+
+  ctx.fill();
+
+  ctx.stroke();
+
+  ctx.restore();
+
+});
+
+}
+
+function movePlayer() {
+
+  let dx = 0;
+
+  let dy = 0;
+
+  if (keys["ArrowUp"]) dy -= 1;
+
+  if (keys["ArrowDown"]) dy += 1;
+
+  if (keys["ArrowLeft"]) dx -= 1;
+
+  if (keys["ArrowRight"]) dx += 1;
+
+  if (dx !== 0 || dy !== 0) {
+
+    let length = Math.sqrt(dx * dx + dy * dy);
+
+    dx /= length;
+
+    dy /= length;
+
+    player.x += dx * player.speed;
+
+    player.y += dy * player.speed;
+
+    if (player.x < 0) player.x = 0;
+
+    if (player.y < 0) player.y = 0;
+
+    if (player.x + player.size > canvas.width) {
+
+      player.x = canvas.width - player.size;
+
+    }
+
+    if (player.y + player.size > canvas.height) {
+
+      player.y = canvas.height - player.size;
+
+    }
+
+    player.dirX = dx;
+
+    player.dirY = dy;
+
+  }
+
+}
+
+function shoot() {
+
+  // impede tiro parado
+
+  if (player.dirX === 0 && player.dirY === 0) return;
+
+  const perpendicularX = -player.dirY;
+
+  const perpendicularY = player.dirX;
+
+  const quantidade = habilidades[2].desbloqueada ? 2 : 1;
+
+  for (let i = 0; i < quantidade; i++) {
+
+    const lado = quantidade === 2 ? (i === 0 ? 9 : -9) : 0;
+
+    bullets.push({
+
+      x: player.x + 15 + perpendicularX * lado,
+
+      y: player.y + 15 + perpendicularY * lado,
+
+      dx: player.dirX * (habilidades[3].desbloqueada ? 7 : 5),
+
+      dy: player.dirY * (habilidades[3].desbloqueada ? 7 : 5)
+
+    });
+
+  }
+
+}
+
+function enemyShoot(e) {
+
+  enemyBullets.push({
+
+    x: e.x + 10,
+
+    y: e.y + 10,
+
+    dx: (player.x - e.x) / 80,
+
+    dy: (player.y - e.y) / 80
+
+  });
+
+}
+
+function verificarFases() {
+
+ while (fase < 5 && score >= fase*100) {
+
+  fase++; maxEnemies = fase+1; desbloquearHabilidade(fase);
+
+  faseText.innerText = 'Fase: ' + fase;
+
+  if (fase === 5 && !chefeCriado) {
+
+   chefeCriado=true;
+
+   if (enemies.length >= maxEnemies) enemies.pop();
+
+   enemies.push({x:480,y:380,size:60,tipo:'chefe',life:40,maxLife:40,speed:.25,interval:55,shootCooldown:0,color:'#fb923c'});
+
+  }
+
+ }
+
+ if (fase === 5 && score >= 500 && chefeDerrotado && !terminou) finalizar(true);
+
+}
+
+function updateBullets() {
+
+ for(let bi=bullets.length-1;bi>=0;bi--) {
+
+  const b=bullets[bi]; b.x+=b.dx; b.y+=b.dy;
+
+  if(b.x < -20 || b.x > canvas.width+20 || b.y < -20 || b.y > canvas.height+20) { bullets.splice(bi,1); continue; }
+
+  const e=enemies.find(e=>b.x<e.x+e.size && b.x+5>e.x && b.y<e.y+e.size && b.y+5>e.y);
+
+  if(!e) continue;
+
+  bullets.splice(bi,1);
+
+  if(habilidades[4].desbloqueada) {
+
+   criarExplosao(e.x+e.size/2,e.y+e.size/2);
+
+   for(const alvo of [...enemies]) if(alvo===e || Math.hypot(alvo.x-e.x,alvo.y-e.y)<80) atingir(alvo,1);
+
+  } else atingir(e,1);
+
+  verificarFases();
+
+  if(terminou) return;
+
+ }
+
+ for(let bi=enemyBullets.length-1;bi>=0;bi--) {
+
+  const b=enemyBullets[bi]; b.x+=b.dx; b.y+=b.dy;
+
+  if(b.x < -20 || b.x > canvas.width+20 || b.y < -20 || b.y > canvas.height+20) { enemyBullets.splice(bi,1); continue; }
+
+  if(b.x<player.x+player.size && b.x+5>player.x && b.y<player.y+player.size && b.y+5>player.y) {
+
+   enemyBullets.splice(bi,1);
+
+   if(!habilidades[4].desbloqueada) { player.life=Math.max(0,player.life-1); atualizarVida(); }
+
+   if(player.life<=0) { finalizar(false); return; }
+
+  }
+
+ }
+
+ while(enemies.length<maxEnemies && !terminou) spawnEnemy();
+
+ atualizarChefe();
+
+}
+
+function updateEnemy() {
+
+  enemies.forEach(e => {
+
+    let dx = player.x - e.x;
+
+    let dy = player.y - e.y;
+
+    let dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 0) {
+
+      e.x += (dx / dist) * e.speed;
+
+      e.y += (dy / dist) * e.speed;
+
+    }
+
+    e.shootCooldown++;
+
+    if (e.shootCooldown > e.interval) {
+
+      enemyShoot(e);
+
+      e.shootCooldown = 0;
+
+    }
+
+  });
+
+}
+
+function gameLoop() {
+
+  if (terminou) { draw(); return; }
+
+  if (paused) {
+
+    draw();
+
+    ctx.fillStyle = "white";
+
+    ctx.font = "30px Arial";
+
+    ctx.fillText("PAUSADO", 220, 250);
+
+    requestAnimationFrame(gameLoop);
+
+    return;
+
+  }
+
+  movePlayer();
+
+  // Na fase 3, basta segurar Espaço para lançar uma rajada contínua.
+
+  if (habilidades[3].desbloqueada && espacoPressionado) {
+
+    const agora = performance.now();
+
+    if (agora - ultimoTiro > 130) {
+
+      shoot();
+
+      ultimoTiro = agora;
+
+    }
+
+  }
+
+  // Na fase 5, uma onda verde elimina os inimigos a cada 8 segundos.
+
+  if (habilidades[5].desbloqueada) {
+
+    contadorSupremo++;
+
+    if (contadorSupremo >= 480) {
+
+      const alvos = [...enemies];
+
+      criarExplosao(player.x + 15, player.y + 15, true);
+
+      pulsoSupremo = 60;
+
+      for (const alvo of alvos) atingir(alvo, alvo.tipo === "chefe" ? 8 : alvo.life);
+
+      scoreText.innerText = "Pontuação: " + score;
+
+      verificarFases();
+
+      contadorSupremo = 0;
+
+    }
+
+  }
+
+  if (pulsoSupremo > 0) pulsoSupremo--;
+
+  efeitos.forEach(efeito => {
+
+    efeito.raio += (efeito.maxRaio - efeito.raio) * 0.18;
+
+    efeito.vida--;
+
+  });
+
+  efeitos = efeitos.filter(efeito => efeito.vida > 0);
+
+  updateBullets();
+
+  if (terminou) { draw(); return; }
+
+  updateEnemy();
+
+  draw();
+
+  requestAnimationFrame(gameLoop);
+
+}
+
+window.addEventListener("keydown", e => {
+
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+
+  if (!jogoIniciado || terminou) return;
+
+  if (e.key.toLowerCase() === "p") {
+
+    if(e.repeat) return;
+
+    togglePause();
+
+    return;
+
+  }
+
+  if(paused) return;
+
+  keys[e.key] = true;
+
+  if (e.key === " " && !espacoPressionado) {
+
+    shoot();
+
+  }
+
+  if (e.key === " ") espacoPressionado = true;
+
+});
+
+window.addEventListener("keyup", e => {
+
+  keys[e.key] = false;
+
+  if (e.key === " ") espacoPressionado = false;
+
+});
+
+// corrige bug ao trocar de aba
+
+window.addEventListener("blur", () => {
+
+  keys = {};
+
+  espacoPressionado = false;
+
+});
+
+
+
+function atualizarVida() {
+
+ lifeText.innerText='Vida: '+player.life;
+
+}
+
+function atualizarChefe() {
+
+ const chefe=enemies.find(e=>e.tipo==='chefe');
+
+ document.getElementById('bossStatus').textContent=chefe?'👑 Chefe: '+chefe.life+'/'+chefe.maxLife:chefeDerrotado?'👑 Chefe derrotado!':'';
+
+}
+
+// Som de bomba gerado no navegador, sem arquivos externos.
+
+let audioBomba = null;
+
+function prepararAudio() {
+
+ try {
+
+  const Audio = window.AudioContext || window.webkitAudioContext;
+
+  if (!Audio) return;
+
+  if (!audioBomba) audioBomba = new Audio();
+
+  if (audioBomba.state === 'suspended') audioBomba.resume().catch(() => {});
+
+ } catch {}
+
+}
+
+window.addEventListener('pointerdown', prepararAudio);
+
+window.addEventListener('keydown', prepararAudio);
+
+// Impacto, ruído de ar e estilhaços formam a explosão.
+
+let saidaExplosao = null;
+
+function somBomba() {
+
+ try {
+
+  if (!audioBomba || audioBomba.state !== 'running') return;
+
+  if (!saidaExplosao) {
+
+   saidaExplosao = audioBomba.createDynamicsCompressor();
+
+   saidaExplosao.threshold.value = -14;
+
+   saidaExplosao.knee.value = 12;
+
+   saidaExplosao.ratio.value = 8;
+
+   saidaExplosao.attack.value = 0.003;
+
+   saidaExplosao.release.value = 0.25;
+
+   const volumeGeral = audioBomba.createGain();
+
+   volumeGeral.gain.value = 0.65;
+
+   saidaExplosao.connect(volumeGeral);
+
+   volumeGeral.connect(audioBomba.destination);
+
+  }
+
+  const inicio = audioBomba.currentTime;
+
+  function camada(atraso, duracao, frequencia, final, ganho, grave) {
+
+   const buffer = audioBomba.createBuffer(1, Math.ceil(audioBomba.sampleRate * duracao), audioBomba.sampleRate);
+
+   const dados = buffer.getChannelData(0);
+
+   let anterior = 0;
+
+   for (let i = 0; i < dados.length; i++) {
+
+    const branco = Math.random() * 2 - 1;
+
+    anterior = (anterior + 0.035 * branco) / 1.035;
+
+    dados[i] = grave ? anterior * 5 : branco;
+
+   }
+
+   const fonte = audioBomba.createBufferSource(); fonte.buffer = buffer;
+
+   const filtro = audioBomba.createBiquadFilter();
+
+   filtro.type = 'lowpass'; filtro.Q.value = 0.7;
+
+   const t = inicio + atraso;
+
+   filtro.frequency.setValueAtTime(frequencia, t);
+
+   filtro.frequency.exponentialRampToValueAtTime(final, t + duracao);
+
+   const volume = audioBomba.createGain();
+
+   volume.gain.setValueAtTime(0.001, t);
+
+   volume.gain.linearRampToValueAtTime(ganho, t + 0.004);
+
+   volume.gain.exponentialRampToValueAtTime(ganho * 0.3, t + duracao * 0.25);
+
+   volume.gain.exponentialRampToValueAtTime(0.001, t + duracao);
+
+   fonte.connect(filtro); filtro.connect(volume); volume.connect(saidaExplosao);
+
+   fonte.start(t); fonte.stop(t + duracao);
+
+   fonte.onended = () => { fonte.disconnect(); filtro.disconnect(); volume.disconnect(); };
+
+  }
+
+  // Impacto aberto, explosão de ar e estilhaços: sem camada grave de tambor.
+
+  camada(0, 0.07, 12000, 4500, 0.95, false);
+
+  camada(0.003, 0.48, 8500, 650, 1.05, false);
+
+  camada(0.025, 0.9, 3200, 350, 0.45, false);
+
+  camada(0.10, 0.045, 10000, 3000, 0.20, false);
+
+  camada(0.17, 0.035, 9000, 2500, 0.13, false);
+
+  camada(0.25, 0.055, 7500, 2000, 0.09, false);
+
+ } catch {}
+
+}
+
+
+
+function atingir(e,dano) {
+
+ if(!enemies.includes(e)) return;
+
+ e.life-=dano;
+
+ if(e.life>0) return;
+
+ enemies.splice(enemies.indexOf(e),1);
+
+ somBomba();
+
+ criarExplosao(e.x+e.size/2,e.y+e.size/2);
+
+ if(e.tipo==='chefe') chefeDerrotado=true;
+
+ score++; scoreText.innerText='Pontuação: '+score;
+
+ if(score>record) { record=score; try {localStorage.setItem('record',record);} catch {} recordText.innerText='Recorde: '+record; }
+
+}
+
+function finalizar(vitoria) {
+
+ terminou=true; jogoZerado=vitoria; keys={}; espacoPressionado=false;
+
+ atualizarChefe();
+
+ document.getElementById('endTitle').textContent=vitoria?'🏆 Você zerou o jogo!':'GAME OVER';
+
+ document.getElementById('endScore').textContent='Pontuação: '+score+' | Recorde: '+record;
+
+ document.getElementById('endScreen').hidden=false;
+
+ document.getElementById('pauseButton').disabled=true;
+
+}
+
+function reiniciar() {
+
+ const estavaFinalizado=terminou;
+
+ player={x:50,y:50,size:30,speed:2,dirX:1,dirY:0,life:100};
+
+ bullets=[]; enemyBullets=[]; enemies=[]; efeitos=[]; keys={};
+
+ score=0; fase=1; maxEnemies=2; paused=false; terminou=false; jogoZerado=false;
+
+ chefeCriado=false; chefeDerrotado=false; habilidadeSelecionada=1;
+
+ espacoPressionado=false; ultimoTiro=0; contadorSupremo=0; pulsoSupremo=0;
+
+ for(let i=1;i<=5;i++) habilidades[i].desbloqueada=i===1;
+
+ scoreText.innerText='Pontuação: 0'; faseText.innerText='Fase: 1';
+
+ document.getElementById('notice').textContent=''; atualizarChefe(); atualizarVida(); atualizarHabilidadeTexto();
+
+ document.getElementById('endScreen').hidden=true;
+
+ document.getElementById('pauseButton').disabled=false;
+
+ document.getElementById('pauseButton').innerText='Pausar';
+
+ spawnEnemy(); spawnEnemy(); if(estavaFinalizado) requestAnimationFrame(gameLoop);
+
+}
+// O jogo só começa depois do clique em INICIAR JOGO.
+function iniciarJogo() {
+  if (jogoIniciado) return;
+  jogoIniciado = true;
+  document.getElementById("startScreen").hidden = true;
+  spawnEnemy();
+  spawnEnemy();
+  requestAnimationFrame(gameLoop);
+}
+
+// Controles por toque: só aparecem em dispositivos com tela sensível ao toque.
+function configurarControleMovel() {
+  const botoes = document.querySelectorAll("[data-key]");
+  botoes.forEach(botao => {
+    const tecla = botao.dataset.key;
+    const pressionar = (evento) => {
+      evento.preventDefault();
+      if (!jogoIniciado || terminou || paused) return;
+      keys[tecla] = true;
+      try { botao.setPointerCapture(evento.pointerId); } catch {}
+    };
+    const soltar = (evento) => {
+      evento.preventDefault();
+      keys[tecla] = false;
+    };
+    botao.addEventListener("pointerdown", pressionar);
+    botao.addEventListener("pointerup", soltar);
+    botao.addEventListener("pointercancel", soltar);
+    botao.addEventListener("lostpointercapture", soltar);
+  });
+
+  const fogo = document.getElementById("fireButton");
+  const pressionarTiro = (evento) => {
+    evento.preventDefault();
+    if (!jogoIniciado || terminou || paused) return;
+    espacoPressionado = true;
+    shoot();
+    try { fogo.setPointerCapture(evento.pointerId); } catch {}
+  };
+  const soltarTiro = (evento) => {
+    evento.preventDefault();
+    espacoPressionado = false;
+  };
+  fogo.addEventListener("pointerdown", pressionarTiro);
+  fogo.addEventListener("pointerup", soltarTiro);
+  fogo.addEventListener("pointercancel", soltarTiro);
+  fogo.addEventListener("lostpointercapture", soltarTiro);
+}
+configurarControleMovel();
+</script>
+
+</body>
+
+</html>
